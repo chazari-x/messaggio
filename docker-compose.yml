@@ -1,0 +1,88 @@
+services:
+  postgres:
+    image: postgres:latest
+    container_name: postgres
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-postgres}
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgrespw}
+    ports:
+      - ${POSTGRES_PORT:-5432}:${POSTGRES_PORT:-5432}
+
+  zookeeper:
+    image: confluentinc/cp-zookeeper:latest
+    container_name: zookeeper
+    environment:
+      ZOOKEEPER_CLIENT_PORT: ${ZOOKEEPER_CLIENT_PORT:-2181}
+      ZOOKEEPER_TICK_TIME: ${ZOOKEEPER_TICK_TIME:-2000}
+    ports:
+      - ${ZOOKEEPER_CLIENT_PORT:-2181}:${ZOOKEEPER_CLIENT_PORT:-2181}
+
+  kafka:
+    image: confluentinc/cp-kafka:latest
+    container_name: kafka
+    depends_on:
+      - zookeeper
+    ports:
+      - ${KAFKA_PORT:-9092}:${KAFKA_PORT:-9092}
+    environment:
+      KAFKA_BROKER_ID: ${KAFKA_BROKER_ID:-1}
+      KAFKA_ZOOKEEPER_CONNECT: ${KAFKA_ZOOKEEPER_CONNECT:-zookeeper:2181}
+      KAFKA_ADVERTISED_LISTENERS: ${KAFKA_ADVERTISED_LISTENERS:-PLAINTEXT://kafka:9092}
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: ${KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR:-1}
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: grafana
+    ports:
+      - ${GRAFANA_PORT:-3000}:${GRAFANA_PORT:-3000}
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=${GF_SECURITY_ADMIN_PASSWORD:-admin}
+
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: prometheus
+    ports:
+      - ${PROMETHEUS_PORT:-9090}:${PROMETHEUS_PORT:-9090}
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+
+  app-server:
+    container_name: app-server
+    image: chazari/messaggio
+    depends_on:
+      - postgres
+      - kafka
+      - grafana
+      - prometheus
+    ports:
+      - ${SERVER_PORT:-8080}:${SERVER_PORT:-8080}
+    environment:
+      KAFKA_ADDRESS: ${KAFKA_ADDRESS:-kafka:9092}
+      SERVER_ADDRESS: ${SERVER_ADDRESS:-localhost:8080}
+      GRAFANA_ADDRESS: ${GRAFANA_ADDRESS:-grafana:3000}
+      DATABASE_ADDRESS: ${DATABASE_ADDRESS:-postgres://postgres:postgrespw@postgres:5432/postgres?sslmode=disable}
+      PROMETHEUS_ADDRESS: ${PROMETHEUS_ADDRESS:-prometheus:9090}
+    command: [ "/app/main", "server" ]
+
+  app-broker:
+    container_name: app-broker
+    image: chazari/messaggio
+    ports:
+      - ${BROKER_PORT:-8081}:${BROKER_PORT:-8081}
+    depends_on:
+      - postgres
+      - kafka
+      - grafana
+      - prometheus
+    environment:
+      BROKER_ADDRESS: ${BROKER_ADDRESS:-localhost:8081}
+      KAFKA_ADDRESS: ${KAFKA_ADDRESS:-kafka:9092}
+      GRAFANA_ADDRESS: ${GRAFANA_ADDRESS:-grafana:3000}
+      DATABASE_ADDRESS: ${DATABASE_ADDRESS:-postgres://postgres:postgrespw@postgres:5432/postgres?sslmode=disable}
+      PROMETHEUS_ADDRESS: ${PROMETHEUS_ADDRESS:-prometheus:9090}
+    command: [ "/app/main", "broker" ]
+
+volumes:
+  pgdata:
+  kafkadata:

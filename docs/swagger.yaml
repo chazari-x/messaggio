@@ -1,0 +1,144 @@
+definitions:
+  model.Message:
+    properties:
+      content:
+        type: string
+      from:
+        type: string
+      id:
+        type: integer
+      status:
+        type: string
+      timestamp:
+        type: integer
+      to:
+        type: string
+    type: object
+  server.request:
+    properties:
+      content:
+        type: string
+      from:
+        type: string
+      to:
+        type: string
+    type: object
+  server.responseError:
+    properties:
+      status:
+        type: string
+      text:
+        type: string
+    type: object
+  server.responseMessage:
+    properties:
+      message:
+        $ref: '#/definitions/model.Message'
+      status:
+        type: string
+    type: object
+  server.responseMessages:
+    properties:
+      messages:
+        items:
+          $ref: '#/definitions/model.Message'
+        type: array
+      status:
+        type: string
+    type: object
+info:
+  contact: {}
+paths:
+  /api/messages:
+    get:
+      description: Get all messages
+      parameters:
+      - default: '""'
+        description: Status filter
+        enum:
+        - new
+        - processing
+        - ok
+        - error
+        in: query
+        name: status
+        type: string
+      - default: 1
+        description: Page number
+        in: query
+        name: page
+        type: integer
+      - default: 50
+        description: Page size
+        in: query
+        name: limit
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/server.responseMessages'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/server.responseError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/server.responseError'
+      summary: Get all messages
+    post:
+      consumes:
+      - application/json
+      description: Create a new message
+      parameters:
+      - description: Message content
+        in: body
+        name: message
+        required: true
+        schema:
+          $ref: '#/definitions/server.request'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/server.responseMessage'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/server.responseError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/server.responseError'
+      summary: Create a new message
+  /api/messages/{id}:
+    get:
+      description: Get a message by ID
+      parameters:
+      - description: Message ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/server.responseMessage'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/server.responseError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/server.responseError'
+      summary: Get a message by ID
+swagger: "2.0"
