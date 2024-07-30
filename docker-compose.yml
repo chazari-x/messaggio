@@ -69,7 +69,7 @@ services:
 
   app-server:
     container_name: app-server
-    image: chazari/messaggio
+    image: chazari/messaggio:latest
     depends_on:
       - postgres
       - grafana
@@ -85,7 +85,7 @@ services:
 
   app-broker:
     container_name: app-broker
-    image: chazari/messaggio
+    image: chazari/messaggio:latest
     depends_on:
       - app-server
       - postgres

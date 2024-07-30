@@ -8,12 +8,12 @@
 ## Запуск
 Для запуска проекта необходимо выполнить следующие команды:
 ```bash
-docker-compose up -d
+docker-compose up -d app-broker
 ```
 
 ## Swagger
 После запуска проекта, документация по API ( [docs/swagger.json](docs/swagger.json) / [docs/swagger.yaml](docs/swagger.yaml) ) будет доступна по адресу:
-```
+```http
 GET http://localhost:8080/api/swagger/index.html
 ```
 
@@ -33,26 +33,45 @@ GET http://localhost:8080/api/messages/{id}
 GET http://localhost:8080/api/messages
 ```
 
-### Получение статистики
+## Получение статистики
 Для статистики добавлены Prometheus и Grafana.
 Результаты можно посмотреть по адресу:
-```
+```http
 GET http://localhost:3000
 ```
 Для входа используйте логин и пароль: admin/admin
 
-Prometheus доступен по адресу:
+### Prometheus добавить в Grafana можно по адресу:
+```http
+GET http://localhost:3000/connections/datasources/new
 ```
+указав URL: `http://prometheus:9090`.
+
+uid Prometheus появится в адресной строке после добавления.
+```http
+GET http://localhost:3000/connections/datasources/edit/bdtbmr3ey2xhcf
+```
+
+### Для создания дашборда с метриками, необходимо импортировать файл [grafana-dashboard-model.json](grafana-dashboard-model.json) в Grafana по адресу:
+```http
+GET http://localhost:3000/dashboard/import
+```
+Заменив `bdtbmr3ey2xhcf` на uid вашего Prometheus.
+```json
+{
+  "datasource": { 
+    "type": "prometheus", 
+    "uid": "bdtbmr3ey2xhcf"
+  }
+}
+```
+
+### Prometheus доступен по адресу:
+```http
 GET http://localhost:9090
 ```
 
-Метрики доступны по адресу:
-```
+### Метрики доступны по адресу:
+```http
 GET http://localhost:8080/metrics
 ```
-
-Для создания дашборда с метриками, необходимо импортировать файл [grafana-dashboard-model.json](grafana-dashboard-model.json) в Grafana.
-Заменив во всех `"datasource": {
-"type": "prometheus",
-"uid": "adtb2yxul83cwd"
-},` `adtb2yxul83cwd` на ваш `uid` из вашего Prometheus.

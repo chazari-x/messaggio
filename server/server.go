@@ -227,7 +227,7 @@ func (s *Server) createMessage(w http.ResponseWriter, r *http.Request) {
 // @Summary Get all messages
 // @Description Get all messages
 // @Produce  json
-// @Param status query string false "Status filter" default("") Enums(new, processing, ok, error)
+// @Param status query string false "Status filter" Enums(new, processing, ok, error)
 // @Param page query int false "Page number" default(1)
 // @Param limit query int false "Page size" default(50)
 // @Success 200 {object} responseMessages

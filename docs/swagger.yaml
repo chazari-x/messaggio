@@ -53,8 +53,7 @@ paths:
     get:
       description: Get all messages
       parameters:
-      - default: '""'
-        description: Status filter
+      - description: Status filter
         enum:
         - new
         - processing

@@ -31,7 +31,6 @@ const docTemplate = `{
                             "error"
                         ],
                         "type": "string",
-                        "default": "\"\"",
                         "description": "Status filter",
                         "name": "status",
                         "in": "query"
