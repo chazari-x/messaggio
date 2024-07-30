@@ -7,7 +7,7 @@ import (
 
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
-	"messaggio/broker"
+	"messaggio/prometheus"
 	"messaggio/server"
 	"messaggio/storage"
 )
@@ -23,19 +23,13 @@ func init() {
 			log.Trace("server started")
 			defer log.Trace("server stopped")
 
-			b, err := broker.New(cfg.Kafka)
-			if err != nil {
-				log.Fatalf("kafka.New: %s", err)
-			}
-			defer b.Close(cmd.Context())
-
 			store, err := storage.New(cmd.Context(), cfg.DB)
 			if err != nil {
 				log.Fatalf("storage.New: %s", err)
 			}
 			defer store.Close()
 
-			s := server.New(cfg.Server, store, b)
+			s := server.New(cfg.Server, store, prometheus.New())
 			defer s.Close(cmd.Context())
 			s.Start()
 

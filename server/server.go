@@ -9,34 +9,49 @@ import (
 	"strconv"
 
 	"github.com/go-chi/chi"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	log "github.com/sirupsen/logrus"
 	httpSwagger "github.com/swaggo/http-swagger"
-	"messaggio/broker"
 	"messaggio/config"
 	_ "messaggio/docs"
 	"messaggio/model"
+	"messaggio/prometheus"
 	"messaggio/storage"
 )
 
 type Server struct {
-	cfg     config.Server
-	storage *storage.Storage
-	kafka   *broker.Broker
-	server  *http.Server
+	cfg        config.Server
+	storage    *storage.Storage
+	server     *http.Server
+	prometheus *prometheus.Prometheus
 }
 
-func New(cfg config.Server, s *storage.Storage, k *broker.Broker) *Server {
+func New(cfg config.Server, s *storage.Storage, p *prometheus.Prometheus) *Server {
 	return &Server{
-		cfg:     cfg,
-		storage: s,
-		kafka:   k,
+		cfg:        cfg,
+		storage:    s,
+		prometheus: p,
 	}
 }
 
 func (s *Server) Start() {
 	go func() {
 		r := chi.NewRouter()
-		r.Get("/swagger/*", httpSwagger.WrapHandler)
+
+		r.Handle("/metrics", promhttp.Handler())
+
+		r.Get("/api/swagger/*", httpSwagger.WrapHandler)
+
+		r.Put("/api/messages/ok/add/{num}", s.AddOk)
+
+		r.Put("/api/messages/new/add/{num}", s.AddNew)
+		r.Put("/api/messages/new/sub/{num}", s.SubNew)
+
+		r.Put("/api/messages/error/add/{num}", s.AddError)
+
+		r.Put("/api/messages/processing/add/{num}", s.AddProcessing)
+		r.Put("/api/messages/processing/sub/{num}", s.SubProcessing)
+
 		r.Post("/api/messages", s.createMessage)
 		r.Get("/api/messages", s.getMessages)
 		r.Get("/api/messages/{id}", s.getMessage)
@@ -46,7 +61,7 @@ func (s *Server) Start() {
 			Handler: r,
 		}
 
-		log.Info("http server starting..")
+		log.Infof("http server starting on %s", s.cfg.Http)
 		if err := s.server.ListenAndServe(); err != nil {
 			log.Error(err)
 		}
@@ -58,9 +73,69 @@ func (s *Server) Close(ctx context.Context) {
 	_ = s.server.Shutdown(ctx)
 }
 
+func (s *Server) AddOk(_ http.ResponseWriter, r *http.Request) {
+	num, err := strconv.Atoi(chi.URLParam(r, "num"))
+	if err != nil {
+		return
+	}
+
+	s.prometheus.OkMessageCounter.Add(float64(num))
+}
+
+func (s *Server) AddNew(_ http.ResponseWriter, r *http.Request) {
+	num, err := strconv.Atoi(chi.URLParam(r, "num"))
+	if err != nil {
+		return
+	}
+
+	s.prometheus.NewMessageGauge.Add(float64(num))
+}
+
+func (s *Server) SubNew(_ http.ResponseWriter, r *http.Request) {
+	num, err := strconv.Atoi(chi.URLParam(r, "num"))
+	if err != nil {
+		return
+	}
+
+	s.prometheus.NewMessageGauge.Sub(float64(num))
+}
+
+func (s *Server) AddError(_ http.ResponseWriter, r *http.Request) {
+	num, err := strconv.Atoi(chi.URLParam(r, "num"))
+	if err != nil {
+		return
+	}
+
+	s.prometheus.ErrorMessageCounter.Add(float64(num))
+}
+
+func (s *Server) AddProcessing(_ http.ResponseWriter, r *http.Request) {
+	num, err := strconv.Atoi(chi.URLParam(r, "num"))
+	if err != nil {
+		return
+	}
+
+	s.prometheus.ProcessingMessageGauge.Add(float64(num))
+}
+
+func (s *Server) SubProcessing(_ http.ResponseWriter, r *http.Request) {
+	num, err := strconv.Atoi(chi.URLParam(r, "num"))
+	if err != nil {
+		return
+	}
+
+	s.prometheus.ProcessingMessageGauge.Sub(float64(num))
+}
+
+// @title Messaggio API
+// @version 1.0
+// @description This is a simple message broker
+// @host localhost:8080
+// @BasePath /api
+
 type responseMessages struct {
 	Status   string          `json:"status"`
-	Messages []model.Message `json:"messages,omitempty"`
+	Messages []model.Message `json:"messages"`
 }
 
 func (r responseMessages) Write(w http.ResponseWriter, code int) {
@@ -71,7 +146,7 @@ func (r responseMessages) Write(w http.ResponseWriter, code int) {
 
 type responseMessage struct {
 	Status  string        `json:"status"`
-	Message model.Message `json:"message,omitempty"`
+	Message model.Message `json:"message"`
 }
 
 func (r responseMessage) Write(w http.ResponseWriter, code int) {
@@ -82,7 +157,7 @@ func (r responseMessage) Write(w http.ResponseWriter, code int) {
 
 type responseError struct {
 	Status string `json:"status"`
-	Text   string `json:"text,omitempty"`
+	Text   string `json:"text"`
 }
 
 func (r responseError) Write(w http.ResponseWriter, code int) {
@@ -140,6 +215,8 @@ func (s *Server) createMessage(w http.ResponseWriter, r *http.Request) {
 		}.Write(w, http.StatusInternalServerError)
 		return
 	}
+
+	s.prometheus.NewMessageGauge.Inc()
 
 	responseMessage{
 		Status:  http.StatusText(http.StatusCreated),

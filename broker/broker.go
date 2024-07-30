@@ -3,11 +3,8 @@ package broker
 import (
 	"context"
 	"encoding/json"
-	"net/http"
 	"time"
 
-	"github.com/go-chi/chi"
-	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/segmentio/kafka-go"
 	log "github.com/sirupsen/logrus"
 	"messaggio/config"
@@ -18,22 +15,26 @@ type Broker struct {
 	cfg    config.Broker
 	writer *kafka.Writer
 	reader *kafka.Reader
-	server *http.Server
 }
 
 func New(cfg config.Broker) (*Broker, error) {
 	writer := kafka.NewWriter(kafka.WriterConfig{
-		Brokers: []string{cfg.Addr},
-		Topic:   "messaggio",
+		Brokers:     []string{cfg.KafkaAddr},
+		Topic:       "messaggio",
+		Logger:      log.StandardLogger(),
+		ErrorLogger: log.StandardLogger(),
 	})
 	reader := kafka.NewReader(kafka.ReaderConfig{
-		Brokers:     []string{cfg.Addr},
+		Brokers:     []string{cfg.KafkaAddr},
 		Topic:       "messaggio",
-		GroupID:     "messaggio-group",
 		StartOffset: kafka.FirstOffset,
 		MinBytes:    10e3, // 10KB
 		MaxBytes:    10e6, // 10MB
+		MaxWait:     500 * time.Millisecond,
+		Partition:   0,
 	})
+
+	log.Trace(cfg.KafkaAddr)
 
 	return &Broker{
 		cfg:    cfg,
@@ -42,28 +43,7 @@ func New(cfg config.Broker) (*Broker, error) {
 	}, nil
 }
 
-func (b *Broker) Start() {
-	go func() {
-		r := chi.NewRouter()
-		r.Handle("/metrics", promhttp.Handler())
-
-		b.server = &http.Server{
-			Addr:    b.cfg.Http,
-			Handler: r,
-		}
-
-		log.Printf("http server starting on %s", b.cfg.Http)
-		if err := b.server.ListenAndServe(); err != nil {
-			log.Printf("failed to start server: %v", err)
-		}
-		log.Printf("http server stopped")
-	}()
-}
-
-func (b *Broker) Close(ctx context.Context) {
-	if b.server != nil {
-		_ = b.server.Shutdown(ctx)
-	}
+func (b *Broker) Close() {
 	_ = b.writer.Close()
 	_ = b.reader.Close()
 }

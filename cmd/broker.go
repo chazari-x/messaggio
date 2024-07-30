@@ -8,7 +8,6 @@ import (
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"messaggio/broker"
-	"messaggio/prometheus"
 	"messaggio/receiver"
 	"messaggio/sender"
 	"messaggio/storage"
@@ -25,14 +24,11 @@ func init() {
 			log.Trace("broker started")
 			defer log.Trace("broker stopped")
 
-			p := prometheus.New()
-
 			b, err := broker.New(cfg.Kafka)
 			if err != nil {
 				log.Fatalf("kafka.New: %s", err)
 			}
-			defer b.Close(cmd.Context())
-			b.Start()
+			defer b.Close()
 
 			store, err := storage.New(cmd.Context(), cfg.DB)
 			if err != nil {
@@ -41,11 +37,11 @@ func init() {
 			defer store.Close()
 
 			log.Trace("receiver started")
-			r := receiver.New(b, store, p)
+			r := receiver.New(b, store, cfg.Kafka)
 			r.Start(cmd.Context())
 
 			log.Trace("sender started")
-			s := sender.New(b, store, p)
+			s := sender.New(b, store, cfg.Kafka)
 			s.Start(cmd.Context())
 
 			c := make(chan os.Signal, 1)

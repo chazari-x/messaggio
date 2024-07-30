@@ -1,12 +1,12 @@
 package model
 
 type Message struct {
-	ID        int    `json:"id,omitempty" pg:",pk,notnull"`
-	Content   string `json:"content,omitempty" pg:",notnull"`
-	From      string `json:"from,omitempty" pg:",notnull"`
-	To        string `json:"to,omitempty" pg:",notnull"`
-	Timestamp int64  `json:"timestamp,omitempty" pg:",notnull,default:extract(epoch from now())"`
-	Status    string `json:"status,omitempty" pg:",notnull,default:'new'"`
+	ID        int    `json:"id" pg:",pk,notnull"`
+	Content   string `json:"content" pg:",notnull"`
+	From      string `json:"from" pg:",notnull"`
+	To        string `json:"to" pg:",notnull"`
+	Timestamp int64  `json:"timestamp" pg:",notnull,default:extract(epoch from now())"`
+	Status    string `json:"status" pg:",notnull,default:'new'"`
 }
 
 type Status string

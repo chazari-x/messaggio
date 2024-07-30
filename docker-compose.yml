@@ -8,6 +8,7 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgrespw}
     ports:
       - ${POSTGRES_PORT:-5432}:${POSTGRES_PORT:-5432}
+    restart: always
 
   zookeeper:
     image: confluentinc/cp-zookeeper:latest
@@ -17,6 +18,7 @@ services:
       ZOOKEEPER_TICK_TIME: ${ZOOKEEPER_TICK_TIME:-2000}
     ports:
       - ${ZOOKEEPER_CLIENT_PORT:-2181}:${ZOOKEEPER_CLIENT_PORT:-2181}
+    restart: always
 
   kafka:
     image: confluentinc/cp-kafka:latest
@@ -30,6 +32,7 @@ services:
       KAFKA_ZOOKEEPER_CONNECT: ${KAFKA_ZOOKEEPER_CONNECT:-zookeeper:2181}
       KAFKA_ADVERTISED_LISTENERS: ${KAFKA_ADVERTISED_LISTENERS:-PLAINTEXT://kafka:9092}
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: ${KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR:-1}
+    restart: always
 
   grafana:
     image: grafana/grafana:latest
@@ -38,6 +41,7 @@ services:
       - ${GRAFANA_PORT:-3000}:${GRAFANA_PORT:-3000}
     environment:
       - GF_SECURITY_ADMIN_PASSWORD=${GF_SECURITY_ADMIN_PASSWORD:-admin}
+    restart: always
 
   prometheus:
     image: prom/prometheus:latest
@@ -45,44 +49,59 @@ services:
     ports:
       - ${PROMETHEUS_PORT:-9090}:${PROMETHEUS_PORT:-9090}
     volumes:
-      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus-config:/etc/prometheus
+    entrypoint: [ "/bin/sh", "-c" ]
+    command: |
+      "echo 'global:
+        scrape_interval: 1s
+      
+      scrape_configs:
+        - job_name: 'prometheus'
+          static_configs:
+            - targets:
+                - 'localhost:${PROMETHEUS_PORT:-9090}'
+      
+        - job_name: 'app'
+          static_configs:
+            - targets:
+                - 'app-server:${SERVER_PORT:-8080}'' > /etc/prometheus/prometheus.yml && /bin/prometheus --config.file=/etc/prometheus/prometheus.yml"
+    restart: always
 
   app-server:
     container_name: app-server
     image: chazari/messaggio
     depends_on:
       - postgres
-      - kafka
       - grafana
       - prometheus
     ports:
       - ${SERVER_PORT:-8080}:${SERVER_PORT:-8080}
     environment:
-      KAFKA_ADDRESS: ${KAFKA_ADDRESS:-kafka:9092}
-      SERVER_ADDRESS: ${SERVER_ADDRESS:-localhost:8080}
-      GRAFANA_ADDRESS: ${GRAFANA_ADDRESS:-grafana:3000}
-      DATABASE_ADDRESS: ${DATABASE_ADDRESS:-postgres://postgres:postgrespw@postgres:5432/postgres?sslmode=disable}
       PROMETHEUS_ADDRESS: ${PROMETHEUS_ADDRESS:-prometheus:9090}
+      SERVER_HTTP: ${SERVER_HTTP:-:8080}
+      DATABASE_ADDRESS: ${DATABASE_ADDRESS:-postgres://postgres:postgrespw@postgres:5432/postgres?sslmode=disable}
     command: [ "/app/main", "server" ]
+    restart: always
 
   app-broker:
     container_name: app-broker
     image: chazari/messaggio
-    ports:
-      - ${BROKER_PORT:-8081}:${BROKER_PORT:-8081}
     depends_on:
+      - app-server
       - postgres
       - kafka
-      - grafana
-      - prometheus
     environment:
-      BROKER_ADDRESS: ${BROKER_ADDRESS:-localhost:8081}
+      SERVER_ADDRESS: ${SERVER_ADDRESS:-app-server:8080}
       KAFKA_ADDRESS: ${KAFKA_ADDRESS:-kafka:9092}
-      GRAFANA_ADDRESS: ${GRAFANA_ADDRESS:-grafana:3000}
       DATABASE_ADDRESS: ${DATABASE_ADDRESS:-postgres://postgres:postgrespw@postgres:5432/postgres?sslmode=disable}
-      PROMETHEUS_ADDRESS: ${PROMETHEUS_ADDRESS:-prometheus:9090}
     command: [ "/app/main", "broker" ]
+    restart: always
 
 volumes:
   pgdata:
   kafkadata:
+  prometheus-config:
+    driver: local
+    driver_opts:
+      type: tmpfs
+      device: tmpfs

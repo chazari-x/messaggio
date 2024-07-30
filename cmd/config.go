@@ -10,11 +10,9 @@ import (
 )
 
 type Config struct {
-	DB         config.DataBase
-	Server     config.Server
-	Kafka      config.Broker
-	Grafana    config.Grafana
-	Prometheus config.Prometheus
+	DB     config.DataBase
+	Server config.Server
+	Kafka  config.Broker
 }
 
 func getConfig() *Config {
@@ -32,20 +30,15 @@ func getConfig() *Config {
 
 	return &Config{
 		Server: config.Server{
-			Http: os.Getenv("SERVER_ADDRESS"),
+			Http:           os.Getenv("SERVER_HTTP"),
+			PrometheusAddr: os.Getenv("PROMETHEUS_ADDRESS"),
 		},
 		DB: config.DataBase{
 			Addr: os.Getenv("DATABASE_ADDRESS"),
 		},
 		Kafka: config.Broker{
-			Http: os.Getenv("BROKER_ADDRESS"),
-			Addr: os.Getenv("KAFKA_ADDRESS"),
-		},
-		Grafana: config.Grafana{
-			Addr: os.Getenv("GRAFANA_ADDRESS"),
-		},
-		Prometheus: config.Prometheus{
-			Addr: os.Getenv("PROMETHEUS_ADDRESS"),
+			KafkaAddr:  os.Getenv("KAFKA_ADDRESS"),
+			ServerAddr: os.Getenv("SERVER_ADDRESS"),
 		},
 	}
 }

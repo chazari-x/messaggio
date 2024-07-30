@@ -8,37 +8,51 @@
 ## Запуск
 Для запуска проекта необходимо выполнить следующие команды:
 ```bash
-docker-compose up
+docker-compose up -d
+```
+
+## Swagger
+После запуска проекта, документация по API ( [docs/swagger.json](docs/swagger.json) / [docs/swagger.yaml](docs/swagger.yaml) ) будет доступна по адресу:
+```
+GET http://localhost:8080/api/swagger/index.html
 ```
 
 ## API
 ### Отправка сообщения
 ```http
-POST /api/messages
-```
-Отправка сообщения в сервис. Сообщение должно быть в формате JSON.
-Пример запроса:
-```json
-{
-  "content": "Hello, World!",
-  "from": "me",
-  "to": "you"
-}
+POST http://localhost:8080/api/messages
 ```
 
 ### Получение сообщения
 ```http
-GET /api/messages/{id}
+GET http://localhost:8080/api/messages/{id}
 ```
-Получение сообщения по его идентификатору. Возвращает сообщение в формате JSON.
-Пример ответа:
-```json
-{
-  "id": 1,
-  "content": "Hello, World!",
-  "from": "me",
-  "to": "you",
-  "timestamp": 1630000000,
-  "status": "ok"
-}
+
+### Получение сообщений
+```http
+GET http://localhost:8080/api/messages
 ```
+
+### Получение статистики
+Для статистики добавлены Prometheus и Grafana.
+Результаты можно посмотреть по адресу:
+```
+GET http://localhost:3000
+```
+Для входа используйте логин и пароль: admin/admin
+
+Prometheus доступен по адресу:
+```
+GET http://localhost:9090
+```
+
+Метрики доступны по адресу:
+```
+GET http://localhost:8080/metrics
+```
+
+Для создания дашборда с метриками, необходимо импортировать файл [grafana-dashboard-model.json](grafana-dashboard-model.json) в Grafana.
+Заменив во всех `"datasource": {
+"type": "prometheus",
+"uid": "adtb2yxul83cwd"
+},` `adtb2yxul83cwd` на ваш `uid` из вашего Prometheus.
