@@ -8,7 +8,7 @@
 ## Запуск
 Для запуска проекта необходимо выполнить следующие команды:
 ```bash
-docker-compose up -d app-broker
+docker-compose up -d
 ```
 
 ## Swagger
